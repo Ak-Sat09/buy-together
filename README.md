@@ -189,7 +189,8 @@ Validation errors also include `fieldErrors`, for example `{ "targetSize": "must
 
 > **Testing phase:** `application.yml` currently has built-in test values for the database and JWT secret so the app runs with no setup. They will be removed before going live, after which both variables become required.
 | `JWT_TTL` | No | `7d` | Token lifetime |
-| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:3000,http://localhost:5173` | Frontend origins, comma-separated (wildcards allowed) |
+| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:3000,http://localhost:5173,https://*.vercel.app` | Frontend origins, comma-separated (wildcards allowed) |
+| `BT_API_PREFIX` | No | empty | URL prefix for all endpoints, e.g. `/buy-together` |
 | `OTP_SENDER` | No | `log` | `log` prints OTPs to the server log, for development only |
 | `SERVER_PORT` | No | `8080` | HTTP port |
 

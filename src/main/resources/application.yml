@@ -23,6 +23,8 @@ management:
         include: health
 
 buy-together:
+  # URL prefix for every endpoint. Empty when running on its own; "/buy-together" inside Generic-Backend
+  api-prefix: ${BT_API_PREFIX:}
   jwt:
     # TEMPORARY for testing only
     secret: ${JWT_SECRET:buy-together-test-secret-key-change-me-before-live}
@@ -55,4 +57,5 @@ buy-together:
       ttl: 30s
 
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+    # Comma-separated, wildcards allowed. Covers local dev and every Vercel deployment
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,https://*.vercel.app}
