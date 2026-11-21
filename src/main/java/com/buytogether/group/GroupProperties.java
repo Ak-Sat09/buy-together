@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 @Validated
-@ConfigurationProperties(prefix = "app.groups")
+@ConfigurationProperties(prefix = "buy-together.groups")
 public record GroupProperties(
         @Min(2) int minSize,
         @Min(2) int maxSize,

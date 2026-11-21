@@ -64,7 +64,7 @@ Decisions worth calling out:
 - **Only shared data is cached.** A cached `GroupView` is the same for every viewer. Per-user fields (`joined`, `createdByMe`) are added after the lookup, so one user's data can never leak to another through the cache.
 - **Joining is safe under concurrency.** Seats are taken with a conditional `findAndModify` (`status = OPEN and memberCount < targetSize`, then `$inc`), and membership has a unique `(groupId, userId)` index. If two people race for the last seat, one wins and the other's membership row is removed again.
 - **Cleanup without tangled modules (Observer).** Before deleting old groups, `GroupPurgeService` publishes a `GroupsPurgedEvent`. Chat and reports listen and delete their own data, so the group module never depends on them.
-- **Pluggable OTP delivery (Strategy).** `OtpSender` has a logging implementation for development, chosen by `app.otp.sender`. A real SMS gateway is one new class.
+- **Pluggable OTP delivery (Strategy).** `OtpSender` has a logging implementation for development, chosen by `buy-together.otp.sender`. A real SMS gateway is one new class.
 - **OTPs are kept in memory, not in the database.** They're stored hashed in a Guava cache with expire-after-write, with a resend cooldown and a wrong-attempt limit.
 - **`PhoneNumber` is a value object.** It accepts `98765 43210`, `+91-9876543210`, `09876543210`, always stores `+919876543210`, and masks itself in logs.
 - **Time is injected.** All services use a `Clock` (IST), which keeps deadline and expiry logic testable.
@@ -193,7 +193,16 @@ Validation errors also include `fieldErrors`, for example `{ "targetSize": "must
 | `OTP_SENDER` | No | `log` | `log` prints OTPs to the server log, for development only |
 | `SERVER_PORT` | No | `8080` | HTTP port |
 
-Group rules (size 2–50, max 3 open groups per person, deadline within 90 days, finished groups deleted after 30 days) and cache sizes are in `src/main/resources/application.yml`.
+Group rules (size 2–50, max 3 open groups per person, deadline within 90 days, finished groups deleted after 30 days) and cache sizes are in `src/main/resources/application.yml`, under `buy-together:`.
+
+### Running inside another Spring Boot app
+
+The `com.buytogether` package can also be dropped into a larger application, as is done in the deployed all-in-one backend:
+
+- All settings live under the `buy-together.*` prefix, so they never mix with the host app's settings.
+- `buy-together.api-prefix` (for example `/buy-together`) moves every endpoint under that path. Spring Security then only covers those paths, so the host app's endpoints keep working as before.
+- `ModuleConfig` registers the module's MongoDB repositories, settings and nightly job by itself. The host only has to add `com.buytogether` to its component scan.
+- The error handler is limited to this package and runs first, so the host's catch-all handler doesn't change these responses.
 
 ### Group status
 

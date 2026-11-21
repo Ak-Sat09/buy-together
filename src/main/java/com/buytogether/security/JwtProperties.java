@@ -8,7 +8,7 @@ import org.springframework.validation.annotation.Validated;
 import java.time.Duration;
 
 @Validated
-@ConfigurationProperties(prefix = "app.jwt")
+@ConfigurationProperties(prefix = "buy-together.jwt")
 public record JwtProperties(
         @NotBlank(message = "JWT_SECRET environment variable is required") String secret,
         @NotNull Duration ttl,

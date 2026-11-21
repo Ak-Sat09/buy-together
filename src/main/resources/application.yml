@@ -22,7 +22,7 @@ management:
       exposure:
         include: health
 
-app:
+buy-together:
   jwt:
     # TEMPORARY for testing only
     secret: ${JWT_SECRET:buy-together-test-secret-key-change-me-before-live}

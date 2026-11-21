@@ -2,6 +2,8 @@ package com.buytogether.common.error;
 
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -16,8 +18,13 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Scoped to this module and ordered first, so it also wins when the module runs inside a
+ * bigger application that has its own catch-all handler.
+ */
 @Slf4j
-@RestControllerAdvice
+@Order(Ordered.HIGHEST_PRECEDENCE)
+@RestControllerAdvice(basePackages = "com.buytogether")
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)

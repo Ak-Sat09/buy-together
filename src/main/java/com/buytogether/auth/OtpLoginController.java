@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/auth/otp")
 @RequiredArgsConstructor
-public class AuthController {
+public class OtpLoginController {
 
     private final AuthService authService;
 

@@ -1,6 +1,7 @@
 package com.buytogether.security;
 
 import com.buytogether.config.CorsProperties;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -18,12 +19,18 @@ import java.time.Duration;
 import java.util.List;
 
 @Configuration
-public class SecurityConfig {
+public class WebSecurityConfig {
 
+    /**
+     * Only requests under this module's paths go through this chain. When the module is
+     * hosted inside another application, that application's endpoints are left untouched.
+     */
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, JwtService jwtService,
-                                            ProblemResponseWriter problemWriter) throws Exception {
+    SecurityFilterChain buyTogetherSecurityFilterChain(HttpSecurity http, JwtService jwtService,
+                                                       ProblemResponseWriter problemWriter,
+                                                       @Value("${buy-together.api-prefix:}") String prefix) throws Exception {
         http
+                .securityMatcher(prefix + "/**")
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -31,9 +38,10 @@ public class SecurityConfig {
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**", "/actuator/health", "/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/groups/mine").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/brands", "/api/groups", "/api/groups/{groupId}").permitAll()
+                        .requestMatchers(prefix + "/api/auth/**", "/actuator/health", "/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, prefix + "/api/groups/mine").authenticated()
+                        .requestMatchers(HttpMethod.GET,
+                                prefix + "/api/brands", prefix + "/api/groups", prefix + "/api/groups/{groupId}").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint(problemWriter)

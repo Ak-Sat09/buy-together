@@ -16,7 +16,7 @@ class GroupMaintenanceJob {
     private final GroupService groupService;
     private final GroupPurgeService purgeService;
 
-    @Scheduled(cron = "${app.groups.maintenance-cron}", zone = "Asia/Kolkata")
+    @Scheduled(cron = "${buy-together.groups.maintenance-cron}", zone = "Asia/Kolkata")
     void run() {
         long expired = groupService.expireOverdueGroups();
         int purged = purgeService.purgeFinishedGroups();

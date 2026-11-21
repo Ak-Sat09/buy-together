@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(prefix = "app.otp", name = "sender", havingValue = "log", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "buy-together.otp", name = "sender", havingValue = "log", matchIfMissing = true)
 class LoggingOtpSender implements OtpSender {
 
     @Override

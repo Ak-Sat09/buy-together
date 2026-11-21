@@ -9,7 +9,7 @@ import org.springframework.validation.annotation.Validated;
 import java.time.Duration;
 
 @Validated
-@ConfigurationProperties(prefix = "app.otp")
+@ConfigurationProperties(prefix = "buy-together.otp")
 public record OtpProperties(
         @Min(4) @Max(8) int length,
         @NotNull Duration ttl,

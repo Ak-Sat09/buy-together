@@ -4,7 +4,7 @@ import com.buytogether.common.phone.PhoneNumber;
 
 /**
  * Delivers a one time password to the user. Swap the implementation with the
- * {@code app.otp.sender} property (for example a real SMS gateway in production).
+ * {@code buy-together.otp.sender} property (for example a real SMS gateway in production).
  */
 public interface OtpSender {
 

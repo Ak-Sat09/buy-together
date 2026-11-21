@@ -9,7 +9,7 @@ import org.springframework.validation.annotation.Validated;
 import java.time.Duration;
 
 @Validated
-@ConfigurationProperties(prefix = "app.cache")
+@ConfigurationProperties(prefix = "buy-together.cache")
 public record CacheProperties(@Valid @NotNull Spec group, @Valid @NotNull Spec search) {
 
     public record Spec(@Min(1) long maxSize, @NotNull Duration ttl) {

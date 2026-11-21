@@ -14,7 +14,7 @@ import java.util.List;
 
 /**
  * Deletes groups that finished (completed, closed or expired) more than
- * {@code app.groups.purge-after-days} ago, together with everything attached to them.
+ * {@code buy-together.groups.purge-after-days} ago, together with everything attached to them.
  */
 @Service
 @RequiredArgsConstructor
