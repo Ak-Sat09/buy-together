@@ -7,7 +7,8 @@ spring:
     name: buy-together
   data:
     mongodb:
-      uri: ${SPRING_DATA_MONGODB_URI:mongodb://localhost:27017/buy_together}
+      # TEMPORARY for testing only, remove before going live and use the env variable instead
+      uri: ${SPRING_DATA_MONGODB_URI:mongodb+srv://anmol:Mehla%406228@chat-service.3pp23dc.mongodb.net/buy_together?authSource=admin&appName=Chat-Service}
       auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}
   jackson:
     default-property-inclusion: non_null
@@ -23,7 +24,8 @@ management:
 
 app:
   jwt:
-    secret: ${JWT_SECRET:}
+    # TEMPORARY for testing only
+    secret: ${JWT_SECRET:buy-together-test-secret-key-change-me-before-live}
     ttl: ${JWT_TTL:7d}
     issuer: buy-together
 

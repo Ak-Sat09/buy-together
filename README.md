@@ -158,8 +158,10 @@ Validation errors also include `fieldErrors`, for example `{ "targetSize": "must
 
 | Variable | Required | Default | Purpose |
 |---|---|---|---|
-| `SPRING_DATA_MONGODB_URI` | Yes (in production) | `mongodb://localhost:27017/buy_together` | MongoDB connection string. With Atlas, put `/buy_together` before the `?` |
-| `JWT_SECRET` | Yes | none | At least 32 characters |
+| `SPRING_DATA_MONGODB_URI` | Yes (in production) | test Atlas database (temporary) | MongoDB connection string. With Atlas, put `/buy_together` before the `?` |
+| `JWT_SECRET` | Yes (in production) | test secret (temporary) | At least 32 characters |
+
+> **Testing phase:** `application.yml` currently has built-in test values for the database and JWT secret so the app runs with no setup. They will be removed before going live, after which both variables become required.
 | `JWT_TTL` | No | `7d` | Token lifetime |
 | `CORS_ALLOWED_ORIGINS` | No | `http://localhost:3000,http://localhost:5173` | Frontend origins, comma-separated (wildcards allowed) |
 | `OTP_SENDER` | No | `log` | `log` prints OTPs to the server log, for development only |
@@ -169,7 +171,13 @@ Group rules (size 2–50, max 3 open groups per person, deadline within 90 days)
 
 ## Run locally
 
-You need Java 17, Maven and MongoDB (local or Atlas).
+You need Java 17 and Maven. During the testing phase no other setup is needed:
+
+```bash
+mvn spring-boot:run
+```
+
+To use your own database and secret instead:
 
 ```bash
 export SPRING_DATA_MONGODB_URI="mongodb://localhost:27017/buy_together"
