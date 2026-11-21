@@ -58,9 +58,12 @@ class GroupRepositoryCustomImpl implements GroupRepositoryCustom {
     }
 
     @Override
-    public boolean close(String groupId, Instant now) {
+    public boolean finish(String groupId, GroupStatus finalStatus, Instant now) {
+        if (!GroupStatus.FINISHED.contains(finalStatus)) {
+            throw new IllegalArgumentException(finalStatus + " is not a final status");
+        }
         Query query = new Query(where(ID).is(groupId).and(STATUS).in(GroupStatus.ACTIVE));
-        Update update = new Update().set(STATUS, GroupStatus.CLOSED).set(UPDATED_AT, now);
+        Update update = new Update().set(STATUS, finalStatus).set(UPDATED_AT, now);
         return mongo.updateFirst(query, update, BuyingGroup.class).getModifiedCount() > 0;
     }
 
@@ -77,8 +80,8 @@ class GroupRepositoryCustomImpl implements GroupRepositoryCustom {
         if (search.cityKey() != null) {
             criteria = criteria.and("cityKey").is(search.cityKey());
         }
-        if (search.brandKey() != null) {
-            criteria = criteria.and("brandKey").is(search.brandKey());
+        if (search.brand() != null) {
+            criteria = criteria.and("brand").is(search.brand());
         }
         if (search.modelKey() != null) {
             criteria = criteria.and("modelKey").is(search.modelKey());

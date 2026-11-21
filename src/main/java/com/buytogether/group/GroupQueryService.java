@@ -2,6 +2,7 @@ package com.buytogether.group;
 
 import com.buytogether.common.error.BusinessException;
 import com.buytogether.common.error.ErrorCode;
+import com.buytogether.common.text.Text;
 import com.buytogether.common.web.PageResponse;
 import com.buytogether.common.web.Paging;
 import com.buytogether.group.cache.GroupCache;
@@ -13,6 +14,7 @@ import com.buytogether.user.User;
 import com.buytogether.user.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -29,6 +31,7 @@ public class GroupQueryService {
     private static final Sort NEWEST_FIRST = Sort.by(Sort.Direction.DESC, "createdAt");
     private static final Sort RECENTLY_JOINED = Sort.by(Sort.Direction.DESC, "joinedAt");
     private static final Sort FIRST_JOINED = Sort.by(Sort.Direction.ASC, "joinedAt");
+    private static final int MAX_SUGGESTIONS = 10;
 
     private final GroupRepository groups;
     private final GroupMemberRepository members;
@@ -56,6 +59,26 @@ public class GroupQueryService {
 
         Set<String> joined = joinedGroupIds(viewerId, views.content());
         return views.map(view -> GroupResponse.of(view, joined.contains(view.id()), view.isCreatedBy(viewerId)));
+    }
+
+    /**
+     * Open groups for the same brand in the same city, biggest first. Read straight from
+     * the database (not the cache) because it decides whether a new group may be created.
+     */
+    public GroupSuggestions suggestions(CarBrand brand, String city, String viewerId) {
+        List<GroupView> open = groups.findByBrandAndCityKeyAndStatusOrderByMemberCountDescCreatedAtAsc(
+                        brand, Text.key(city), GroupStatus.OPEN, PageRequest.of(0, MAX_SUGGESTIONS))
+                .stream()
+                .map(GroupView::from)
+                .toList();
+
+        Set<String> joined = joinedGroupIds(viewerId, open);
+        List<GroupResponse> responses = open.stream()
+                .map(view -> GroupResponse.of(view, joined.contains(view.id()), view.isCreatedBy(viewerId)))
+                .toList();
+        int peopleInterested = open.stream().mapToInt(GroupView::memberCount).sum();
+
+        return new GroupSuggestions(brand, brand.displayName(), Text.clean(city), open.isEmpty(), peopleInterested, responses);
     }
 
     public PageResponse<GroupResponse> joinedBy(String userId, int page, int size) {

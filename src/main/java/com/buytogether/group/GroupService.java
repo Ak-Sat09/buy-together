@@ -39,13 +39,17 @@ public class GroupService {
         if (groups.countByCreatorIdAndStatusIn(creatorId, GroupStatus.ACTIVE) >= properties.maxOpenPerUser()) {
             throw new BusinessException(ErrorCode.TOO_MANY_ACTIVE_GROUPS);
         }
+        // Buyers get the best deal in one big group, so a second open group for the
+        // same brand and city is not allowed. A new one can start once the old one is full.
+        if (groups.existsByBrandAndCityKeyAndStatus(request.brand(), Text.key(request.city()), GroupStatus.OPEN)) {
+            throw new BusinessException(ErrorCode.OPEN_GROUP_EXISTS);
+        }
 
         Instant now = clock.instant();
         BuyingGroup group = groups.save(BuyingGroup.builder()
-                .brand(Text.clean(request.brand()))
+                .brand(request.brand())
                 .model(Text.clean(request.model()))
                 .city(Text.clean(request.city()))
-                .brandKey(Text.key(request.brand()))
                 .modelKey(Text.key(request.model()))
                 .cityKey(Text.key(request.city()))
                 .note(Text.clean(request.note()))
@@ -111,17 +115,14 @@ public class GroupService {
         return GroupView.from(load(groupId));
     }
 
+    /** Creator cancels the plan. */
     public GroupView close(String groupId, String userId) {
-        BuyingGroup group = load(groupId);
-        if (!group.isCreatedBy(userId)) {
-            throw new BusinessException(ErrorCode.NOT_GROUP_CREATOR);
-        }
-        if (!groups.close(groupId, clock.instant())) {
-            throw new BusinessException(ErrorCode.GROUP_INACTIVE);
-        }
+        return finish(groupId, userId, GroupStatus.CLOSED);
+    }
 
-        cache.evict(groupId);
-        return GroupView.from(load(groupId));
+    /** Creator marks the deal as done after the members bought their cars. */
+    public GroupView complete(String groupId, String userId) {
+        return finish(groupId, userId, GroupStatus.COMPLETED);
     }
 
     public long expireOverdueGroups() {
@@ -130,6 +131,19 @@ public class GroupService {
             cache.evictAll();
         }
         return expired;
+    }
+
+    private GroupView finish(String groupId, String userId, GroupStatus finalStatus) {
+        BuyingGroup group = load(groupId);
+        if (!group.isCreatedBy(userId)) {
+            throw new BusinessException(ErrorCode.NOT_GROUP_CREATOR);
+        }
+        if (!groups.finish(groupId, finalStatus, clock.instant())) {
+            throw new BusinessException(ErrorCode.GROUP_INACTIVE);
+        }
+
+        cache.evict(groupId);
+        return GroupView.from(load(groupId));
     }
 
     private BuyingGroup load(String groupId) {

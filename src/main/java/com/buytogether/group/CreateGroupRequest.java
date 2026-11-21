@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 
 public record CreateGroupRequest(
-        @NotBlank @Size(max = 40) String brand,
+        @NotNull CarBrand brand,
         @NotBlank @Size(max = 60) String model,
         @NotBlank @Size(max = 60) String city,
         @NotNull Integer targetSize,

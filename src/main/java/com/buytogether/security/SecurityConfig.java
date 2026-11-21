@@ -33,7 +33,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**", "/actuator/health", "/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/groups/mine").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/groups", "/api/groups/{groupId}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/brands", "/api/groups", "/api/groups/{groupId}").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint(problemWriter)

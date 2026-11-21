@@ -18,4 +18,6 @@ public interface GroupMemberRepository extends MongoRepository<GroupMember, Stri
     Page<GroupMember> findByUserId(String userId, Pageable pageable);
 
     List<GroupMember> findByUserIdAndGroupIdIn(String userId, Collection<String> groupIds);
+
+    long deleteByGroupIdIn(Collection<String> groupIds);
 }

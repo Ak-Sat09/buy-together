@@ -37,7 +37,7 @@ class GroupServiceTest {
     private final GroupMemberRepository members = mock(GroupMemberRepository.class);
     private final GroupCache cache = mock(GroupCache.class);
     private final MutableClock clock = new MutableClock(Instant.parse("2026-11-21T10:00:00Z"), ZoneOffset.UTC);
-    private final GroupProperties properties = new GroupProperties(2, 50, 3, 90, "0 5 0 * * *");
+    private final GroupProperties properties = new GroupProperties(2, 50, 3, 90, 30, "0 5 0 * * *");
 
     private GroupService groupService;
 
@@ -112,6 +112,42 @@ class GroupServiceTest {
     }
 
     @Test
+    void cannotCreateWhileAnOpenGroupExistsForSameBrandAndCity() {
+        when(groups.existsByBrandAndCityKeyAndStatus(CarBrand.MAHINDRA, "jaipur", GroupStatus.OPEN)).thenReturn(true);
+        CreateGroupRequest request = new CreateGroupRequest(CarBrand.MAHINDRA, "Thar", " JAIPUR ", 10, null, null);
+
+        assertError(() -> groupService.create(CREATOR, request), ErrorCode.OPEN_GROUP_EXISTS);
+        verify(groups, never()).save(any(BuyingGroup.class));
+    }
+
+    @Test
+    void creatorCanMarkDealDone() {
+        givenGroup(group(GroupStatus.FULL, 10, 10));
+        when(groups.finish(eq(GROUP_ID), eq(GroupStatus.COMPLETED), any())).thenReturn(true);
+
+        groupService.complete(GROUP_ID, CREATOR);
+
+        verify(groups).finish(eq(GROUP_ID), eq(GroupStatus.COMPLETED), any());
+        verify(cache).evict(GROUP_ID);
+    }
+
+    @Test
+    void memberCannotMarkDealDone() {
+        givenGroup(group(GroupStatus.FULL, 10, 10));
+
+        assertError(() -> groupService.complete(GROUP_ID, USER), ErrorCode.NOT_GROUP_CREATOR);
+        verify(groups, never()).finish(anyString(), any(), any());
+    }
+
+    @Test
+    void cannotCompleteAFinishedGroup() {
+        givenGroup(group(GroupStatus.CLOSED, 4, 10));
+        when(groups.finish(eq(GROUP_ID), eq(GroupStatus.COMPLETED), any())).thenReturn(false);
+
+        assertError(() -> groupService.complete(GROUP_ID, CREATOR), ErrorCode.GROUP_INACTIVE);
+    }
+
+    @Test
     void onlyCreatorCanClose() {
         givenGroup(group(GroupStatus.OPEN, 3, 10));
 
@@ -120,7 +156,7 @@ class GroupServiceTest {
 
     @Test
     void rejectsSizeOutsideConfiguredRange() {
-        CreateGroupRequest tooBig = new CreateGroupRequest("Tata", "Nexon", "Jaipur", 500, null, null);
+        CreateGroupRequest tooBig = new CreateGroupRequest(CarBrand.TATA, "Nexon", "Jaipur", 500, null, null);
 
         assertError(() -> groupService.create(CREATOR, tooBig), ErrorCode.INVALID_GROUP_SIZE);
     }
@@ -128,7 +164,7 @@ class GroupServiceTest {
     @Test
     void rejectsDeadlineTooFarAhead() {
         LocalDate farAway = LocalDate.of(2027, 6, 1);
-        CreateGroupRequest request = new CreateGroupRequest("Tata", "Nexon", "Jaipur", 10, null, farAway);
+        CreateGroupRequest request = new CreateGroupRequest(CarBrand.TATA, "Nexon", "Jaipur", 10, null, farAway);
 
         assertError(() -> groupService.create(CREATOR, request), ErrorCode.INVALID_DEADLINE);
     }
@@ -136,7 +172,7 @@ class GroupServiceTest {
     @Test
     void limitsOpenGroupsPerUser() {
         when(groups.countByCreatorIdAndStatusIn(CREATOR, GroupStatus.ACTIVE)).thenReturn(3L);
-        CreateGroupRequest request = new CreateGroupRequest("Tata", "Nexon", "Jaipur", 10, null, null);
+        CreateGroupRequest request = new CreateGroupRequest(CarBrand.TATA, "Nexon", "Jaipur", 10, null, null);
 
         assertError(() -> groupService.create(CREATOR, request), ErrorCode.TOO_MANY_ACTIVE_GROUPS);
     }
@@ -144,11 +180,12 @@ class GroupServiceTest {
     @Test
     void createStoresCleanNamesAndAddsCreatorAsMember() {
         when(groups.save(any(BuyingGroup.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        CreateGroupRequest request = new CreateGroupRequest("  Tata ", "Nexon   EV", " Jaipur", 10, "Diwali offer", null);
+        CreateGroupRequest request = new CreateGroupRequest(CarBrand.TATA, "Nexon   EV", " Jaipur", 10, "Diwali offer", null);
 
         GroupView view = groupService.create(CREATOR, request);
 
-        assertThat(view.brand()).isEqualTo("Tata");
+        assertThat(view.brand()).isEqualTo(CarBrand.TATA);
+        assertThat(view.city()).isEqualTo("Jaipur");
         assertThat(view.model()).isEqualTo("Nexon EV");
         assertThat(view.memberCount()).isEqualTo(1);
         assertThat(view.status()).isEqualTo(GroupStatus.OPEN);
@@ -162,8 +199,8 @@ class GroupServiceTest {
     private static BuyingGroup group(GroupStatus status, int memberCount, int targetSize) {
         return BuyingGroup.builder()
                 .id(GROUP_ID)
-                .brand("Tata").model("Nexon").city("Jaipur")
-                .brandKey("tata").modelKey("nexon").cityKey("jaipur")
+                .brand(CarBrand.TATA).model("Nexon").city("Jaipur")
+                .modelKey("nexon").cityKey("jaipur")
                 .targetSize(targetSize)
                 .memberCount(memberCount)
                 .status(status)

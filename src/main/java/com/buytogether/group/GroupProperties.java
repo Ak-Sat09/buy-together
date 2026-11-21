@@ -12,6 +12,7 @@ public record GroupProperties(
         @Min(2) int maxSize,
         @Min(1) int maxOpenPerUser,
         @Min(1) int maxDeadlineDays,
-        @NotBlank String expiryCron
+        @Min(1) int purgeAfterDays,
+        @NotBlank String maintenanceCron
 ) {
 }

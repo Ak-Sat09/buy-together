@@ -20,7 +20,8 @@ public interface GroupRepositoryCustom {
 
     boolean markFullIfTargetReached(String groupId, int targetSize, Instant now);
 
-    boolean close(String groupId, Instant now);
+    /** Moves an active group to a finished state (completed or closed). False if it was not active. */
+    boolean finish(String groupId, GroupStatus finalStatus, Instant now);
 
     long expireDeadlinesBefore(LocalDate day, Instant now);
 

@@ -3,6 +3,7 @@ package com.buytogether.group.cache;
 import com.buytogether.common.error.BusinessException;
 import com.buytogether.common.error.ErrorCode;
 import com.buytogether.common.web.PageResponse;
+import com.buytogether.group.CarBrand;
 import com.buytogether.group.GroupSearch;
 import com.buytogether.group.GroupStatus;
 import com.buytogether.group.GroupView;
@@ -37,7 +38,7 @@ class GuavaGroupCacheTest {
     void evictDropsTheGroupAndAllSearchPages() {
         AtomicInteger groupLoads = new AtomicInteger();
         AtomicInteger searchLoads = new AtomicInteger();
-        SearchKey key = new SearchKey(GroupSearch.of("Jaipur", "Tata", null, null), 0, 20);
+        SearchKey key = new SearchKey(GroupSearch.of("Jaipur", CarBrand.TATA, null, null), 0, 20);
 
         cache.group("g1", () -> { groupLoads.incrementAndGet(); return view("g1"); });
         cache.search(key, () -> { searchLoads.incrementAndGet(); return page(view("g1")); });
@@ -54,9 +55,9 @@ class GuavaGroupCacheTest {
     void sameFiltersWrittenDifferentlyShareOneCacheEntry() {
         AtomicInteger loads = new AtomicInteger();
 
-        cache.search(new SearchKey(GroupSearch.of("Jaipur", "Tata", null, null), 0, 20),
+        cache.search(new SearchKey(GroupSearch.of("Jaipur", CarBrand.TATA, null, null), 0, 20),
                 () -> { loads.incrementAndGet(); return page(); });
-        cache.search(new SearchKey(GroupSearch.of("  jaipur ", "TATA", null, GroupStatus.OPEN), 0, 20),
+        cache.search(new SearchKey(GroupSearch.of("  jaipur ", CarBrand.TATA, null, GroupStatus.OPEN), 0, 20),
                 () -> { loads.incrementAndGet(); return page(); });
 
         assertThat(loads).hasValue(1);
@@ -72,7 +73,7 @@ class GuavaGroupCacheTest {
     }
 
     private static GroupView view(String id) {
-        return new GroupView(id, "Tata", "Nexon", "Jaipur", null, 10, 1, 9, GroupStatus.OPEN,
+        return new GroupView(id, CarBrand.TATA, "Nexon", "Jaipur", null, 10, 1, 9, GroupStatus.OPEN,
                 "creator", null, Instant.parse("2026-11-21T10:00:00Z"));
     }
 

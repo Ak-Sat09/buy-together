@@ -33,7 +33,7 @@ public class GroupController {
 
     @GetMapping
     public PageResponse<GroupResponse> browse(@RequestParam(required = false) String city,
-                                              @RequestParam(required = false) String brand,
+                                              @RequestParam(required = false) CarBrand brand,
                                               @RequestParam(required = false) String model,
                                               @RequestParam(required = false) GroupStatus status,
                                               @RequestParam(defaultValue = "0") int page,
@@ -41,6 +41,13 @@ public class GroupController {
                                               @AuthenticationPrincipal AuthUser viewer) {
         GroupSearch search = GroupSearch.of(city, brand, model, status);
         return groupQueries.browse(search, page, size, idOf(viewer));
+    }
+
+    @GetMapping("/suggestions")
+    public GroupSuggestions suggestions(@RequestParam CarBrand brand,
+                                        @RequestParam String city,
+                                        @AuthenticationPrincipal AuthUser viewer) {
+        return groupQueries.suggestions(brand, city, idOf(viewer));
     }
 
     @GetMapping("/mine")
@@ -70,6 +77,12 @@ public class GroupController {
     @PostMapping("/{groupId}/close")
     public GroupResponse close(@PathVariable String groupId, @AuthenticationPrincipal AuthUser user) {
         GroupView view = groupService.close(groupId, user.id());
+        return GroupResponse.of(view, true, true);
+    }
+
+    @PostMapping("/{groupId}/complete")
+    public GroupResponse complete(@PathVariable String groupId, @AuthenticationPrincipal AuthUser user) {
+        GroupView view = groupService.complete(groupId, user.id());
         return GroupResponse.of(view, true, true);
     }
 

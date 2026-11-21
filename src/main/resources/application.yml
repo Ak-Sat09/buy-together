@@ -42,7 +42,9 @@ app:
     max-size: 50
     max-open-per-user: 3
     max-deadline-days: 90
-    expiry-cron: "0 5 0 * * *"
+    # Completed, closed and expired groups are deleted this many days after they finish
+    purge-after-days: 30
+    maintenance-cron: "0 5 0 * * *"
 
   cache:
     group:

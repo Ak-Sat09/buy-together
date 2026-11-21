@@ -8,7 +8,7 @@ import java.time.LocalDate;
  */
 public record GroupView(
         String id,
-        String brand,
+        CarBrand brand,
         String model,
         String city,
         String note,

@@ -5,7 +5,8 @@ import java.time.LocalDate;
 
 public record GroupResponse(
         String id,
-        String brand,
+        CarBrand brand,
+        String brandName,
         String model,
         String city,
         String note,
@@ -23,6 +24,7 @@ public record GroupResponse(
         return new GroupResponse(
                 view.id(),
                 view.brand(),
+                view.brand().displayName(),
                 view.model(),
                 view.city(),
                 view.note(),

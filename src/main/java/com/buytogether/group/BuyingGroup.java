@@ -14,15 +14,16 @@ import java.time.Instant;
 import java.time.LocalDate;
 
 /**
- * A "who wants to buy this car with me" post. Membership counters are only changed
- * through atomic updates in {@link GroupRepositoryCustom}, never by saving this object,
- * so concurrent joins cannot overwrite each other.
+ * A "who wants to buy this car with me" post. Membership counters and status are only
+ * changed through atomic updates in {@link GroupRepositoryCustom}, never by saving this
+ * object, so concurrent joins cannot overwrite each other.
  */
 @Document("groups")
 @CompoundIndexes({
-        @CompoundIndex(name = "browse_idx", def = "{'status': 1, 'cityKey': 1, 'brandKey': 1, 'createdAt': -1}"),
+        @CompoundIndex(name = "browse_idx", def = "{'status': 1, 'cityKey': 1, 'brand': 1, 'createdAt': -1}"),
         @CompoundIndex(name = "creator_idx", def = "{'creatorId': 1, 'status': 1}"),
-        @CompoundIndex(name = "expiry_idx", def = "{'status': 1, 'deadline': 1}")
+        @CompoundIndex(name = "expiry_idx", def = "{'status': 1, 'deadline': 1}"),
+        @CompoundIndex(name = "purge_idx", def = "{'status': 1, 'updatedAt': 1}")
 })
 @Getter
 @Builder
@@ -33,12 +34,11 @@ public class BuyingGroup {
     @Id
     private String id;
 
-    private String brand;
+    private CarBrand brand;
     private String model;
     private String city;
 
     // Lower case copies used for case insensitive filtering
-    private String brandKey;
     private String modelKey;
     private String cityKey;
 
