@@ -64,7 +64,7 @@ Decisions worth calling out:
 - **Only shared data is cached.** A cached `GroupView` is the same for every viewer. Per-user fields (`joined`, `createdByMe`) are added after the lookup, so one user's data can never leak to another through the cache.
 - **Joining is safe under concurrency.** Seats are taken with a conditional `findAndModify` (`status = OPEN and memberCount < targetSize`, then `$inc`), and membership has a unique `(groupId, userId)` index. If two people race for the last seat, one wins and the other's membership row is removed again.
 - **Cleanup without tangled modules (Observer).** Before deleting old groups, `GroupPurgeService` publishes a `GroupsPurgedEvent`. Chat and reports listen and delete their own data, so the group module never depends on them.
-- **Pluggable OTP delivery (Strategy).** `OtpSender` has a logging implementation for development, chosen by `buy-together.otp.sender`. A real SMS gateway is one new class.
+- **Pluggable OTP delivery (Strategy).** `OtpSender` has two implementations, chosen by `buy-together.otp.sender`: `log` prints the code (development) and `twilio` sends a real SMS through Twilio's REST API, with no SDK. Another gateway is one new class. If the gateway fails, the user gets `OTP_DELIVERY_FAILED` and can ask again straight away.
 - **OTPs are kept in memory, not in the database.** They're stored hashed in a Guava cache with expire-after-write, with a resend cooldown and a wrong-attempt limit.
 - **`PhoneNumber` is a value object.** It accepts `98765 43210`, `+91-9876543210`, `09876543210`, always stores `+919876543210`, and masks itself in logs.
 - **Time is injected.** All services use a `Clock` (IST), which keeps deadline and expiry logic testable.
@@ -191,7 +191,10 @@ Validation errors also include `fieldErrors`, for example `{ "targetSize": "must
 | `JWT_TTL` | No | `7d` | Token lifetime |
 | `CORS_ALLOWED_ORIGINS` | No | `http://localhost:3000,http://localhost:5173,https://*.vercel.app` | Frontend origins, comma-separated (wildcards allowed) |
 | `BT_API_PREFIX` | No | empty | URL prefix for all endpoints, e.g. `/buy-together` |
-| `OTP_SENDER` | No | `log` | `log` prints OTPs to the server log, for development only |
+| `OTP_SENDER` | No | `log` | `log` prints OTPs to the server log; `twilio` sends a real SMS |
+| `TWILIO_ACCOUNT_SID` | With `twilio` | | Account SID from the Twilio console (starts with `AC`) |
+| `TWILIO_AUTH_TOKEN` | With `twilio` | | Auth token from the Twilio console |
+| `TWILIO_FROM_NUMBER` | With `twilio` | | Your Twilio phone number, e.g. `+15551234567` |
 | `SERVER_PORT` | No | `8080` | HTTP port |
 
 Group rules (size 2–50, max 3 open groups per person, deadline within 90 days, finished groups deleted after 30 days) and cache sizes are in `src/main/resources/application.yml`, under `buy-together:`.
@@ -242,6 +245,18 @@ curl -X POST localhost:8080/api/auth/otp/verify -H "Content-Type: application/js
   -d '{"phone":"9876543210","otp":"<from log>","name":"Anmol"}'
 ```
 
+### Real SMS with Twilio (free trial)
+
+1. Sign up at twilio.com (no card needed) and get a trial phone number.
+2. Under **Verified Caller IDs**, add the mobile numbers you will test with. The trial only sends to verified numbers (up to 5), and each SMS starts with "Sent from your Twilio trial account".
+3. Start the app with:
+
+```bash
+OTP_SENDER=twilio TWILIO_ACCOUNT_SID=AC... TWILIO_AUTH_TOKEN=... TWILIO_FROM_NUMBER=+1... mvn spring-boot:run
+```
+
+Twilio errors (wrong token, unverified number) show up in the log as `Twilio could not send OTP`.
+
 With Docker:
 
 ```bash
@@ -260,7 +275,7 @@ Health check: `GET /actuator/health`
 mvn verify
 ```
 
-The unit tests cover phone parsing, the OTP flow (cooldown, attempts, one-time use), JWT issue and verify, cache loading and eviction, the group rules (seat race, duplicate join, full or closed groups, one open group per brand and city, creator rules, deal completion, size and deadline limits) and the cleanup of finished groups. They run without a database. GitHub Actions runs them on every push.
+The unit tests cover phone parsing, the OTP flow (cooldown, attempts, one-time use, retry after a failed SMS), the Twilio request, JWT issue and verify, cache loading and eviction, the group rules (seat race, duplicate join, full or closed groups, one open group per brand and city, creator rules, deal completion, size and deadline limits) and the cleanup of finished groups. They run without a database. GitHub Actions runs them on every push.
 
 ## Project structure
 
@@ -281,7 +296,7 @@ src/main/java/com/buytogether
 
 ## Next up
 
-- Real SMS sender for OTP
+- Paid SMS route for India (Twilio trial only sends to verified numbers)
 - WebSocket push for chat (REST polling works today)
 - Polls inside a group (pick a date or showroom)
 - Hide a group automatically after several reports

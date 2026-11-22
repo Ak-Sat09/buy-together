@@ -36,8 +36,12 @@ buy-together:
     ttl: 5m
     resend-cooldown: 60s
     max-attempts: 5
-    # "log" prints the OTP to the server log. Plug in a real SMS sender before going live.
+    # "log" prints the OTP to the server log, "twilio" sends a real SMS
     sender: ${OTP_SENDER:log}
+    twilio:
+      account-sid: ${TWILIO_ACCOUNT_SID:}
+      auth-token: ${TWILIO_AUTH_TOKEN:}
+      from-number: ${TWILIO_FROM_NUMBER:}
 
   groups:
     min-size: 2
