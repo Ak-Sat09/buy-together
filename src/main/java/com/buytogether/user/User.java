@@ -12,7 +12,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document("users")
+@Document("bt_users")
 @Getter
 @Setter
 @Builder

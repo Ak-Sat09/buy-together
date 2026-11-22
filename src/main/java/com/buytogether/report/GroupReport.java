@@ -11,7 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document("group_reports")
+@Document("bt_group_reports")
 @CompoundIndex(name = "group_reporter_uq", def = "{'groupId': 1, 'reporterId': 1}", unique = true)
 @Getter
 @Builder

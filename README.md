@@ -202,6 +202,7 @@ The `com.buytogether` package can also be dropped into a larger application, as 
 
 - All settings live under the `buy-together.*` prefix, so they never mix with the host app's settings.
 - `buy-together.api-prefix` (for example `/buy-together`) moves every endpoint under that path. Spring Security then only covers those paths, so the host app's endpoints keep working as before.
+- Every collection starts with `bt_` (`bt_users`, `bt_groups`, `bt_group_members`, `bt_group_messages`, `bt_group_reports`), so the module can share a database with other apps without clashing with their collections or indexes.
 - `ModuleConfig` registers the module's MongoDB repositories, settings and nightly job by itself. The host only has to add `com.buytogether` to its component scan.
 - The error handler is limited to this package and runs first, so the host's catch-all handler doesn't change these responses.
 
