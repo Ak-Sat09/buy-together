@@ -10,6 +10,18 @@ spring:
       # TEMPORARY for testing only, remove before going live and use the env variable instead
       uri: ${SPRING_DATA_MONGODB_URI:mongodb+srv://anmol:Mehla%406228@chat-service.3pp23dc.mongodb.net/buy_together?authSource=admin&appName=Chat-Service}
       auto-index-creation: ${MONGODB_AUTO_INDEX_CREATION:true}
+  mail:
+    # any SMTP server works (Gmail with an app password, Brevo, SES). Port 587, AWS blocks 25.
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
   jackson:
     default-property-inclusion: non_null
   mvc:
@@ -21,6 +33,10 @@ management:
     web:
       exposure:
         include: health
+  health:
+    # don't log in to the SMTP server on every health check
+    mail:
+      enabled: false
 
 buy-together:
   # URL prefix for every endpoint. Empty when running on its own; "/buy-together" inside Generic-Backend
@@ -38,10 +54,16 @@ buy-together:
     max-attempts: 5
     # "log" prints the OTP to the server log, "twilio" sends a real SMS
     sender: ${OTP_SENDER:log}
+    # "log" prints email OTPs to the server log, "smtp" sends them through spring.mail
+    email-sender: ${EMAIL_OTP_SENDER:log}
     twilio:
       account-sid: ${TWILIO_ACCOUNT_SID:}
       auth-token: ${TWILIO_AUTH_TOKEN:}
       from-number: ${TWILIO_FROM_NUMBER:}
+
+  google:
+    # OAuth client id from Google Cloud Console; Google login is off while empty
+    client-id: ${GOOGLE_CLIENT_ID:}
 
   groups:
     min-size: 2

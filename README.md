@@ -12,7 +12,7 @@ This repository is the **Spring Boot backend**.
 
 ## Features
 
-- **Phone OTP login.** No passwords. The first login creates the account.
+- **Three ways to log in, no passwords.** Phone OTP, email OTP or Google. The first login creates the account, and email OTP and Google open the same account when the email matches.
 - **Brand from a fixed list** (Mahindra, Tata, Maruti Suzuki, ...), so the same brand is never split into differently spelled groups. The model stays free text
 - **One open group per brand and city.** Before creating, the app asks the backend who's already buying that brand in the user's city. If an open group exists, the user joins it instead of starting a new one. A new group is allowed once the existing one is full
 - **Create a group:** brand, model, city, target size, optional note and deadline
@@ -64,9 +64,11 @@ Decisions worth calling out:
 - **Only shared data is cached.** A cached `GroupView` is the same for every viewer. Per-user fields (`joined`, `createdByMe`) are added after the lookup, so one user's data can never leak to another through the cache.
 - **Joining is safe under concurrency.** Seats are taken with a conditional `findAndModify` (`status = OPEN and memberCount < targetSize`, then `$inc`), and membership has a unique `(groupId, userId)` index. If two people race for the last seat, one wins and the other's membership row is removed again.
 - **Cleanup without tangled modules (Observer).** Before deleting old groups, `GroupPurgeService` publishes a `GroupsPurgedEvent`. Chat and reports listen and delete their own data, so the group module never depends on them.
-- **Pluggable OTP delivery (Strategy).** `OtpSender` has two implementations, chosen by `buy-together.otp.sender`: `log` prints the code (development) and `twilio` sends a real SMS through Twilio's REST API, with no SDK. Another gateway is one new class. If the gateway fails, the user gets `OTP_DELIVERY_FAILED` and can ask again straight away.
+- **Pluggable OTP delivery (Strategy).** SMS goes through `OtpSender` (`log` or `twilio`, chosen by `buy-together.otp.sender`), and email goes through `EmailOtpSender` (`log` or `smtp`, chosen by `buy-together.otp.email-sender`). Twilio is called over plain REST, and SMTP works with any provider (Gmail app password, Brevo, SES). Another gateway is one new class. If delivery fails, the user gets `OTP_DELIVERY_FAILED` and can ask again straight away.
+- **Google login without the Google SDK.** The frontend's "Sign in with Google" button gives an ID token. The backend checks it with Spring Security's JWT decoder against Google's public keys: issuer, audience (our client id), expiry and a verified email. Then it issues our own JWT, so the rest of the API doesn't care how the user logged in.
+- **Phone and email are each unique only when set.** A user can have one, the other or both. Plain unique indexes would treat every missing value as the same `null`, so `UserIndexes` creates partial unique indexes at start-up.
 - **OTPs are kept in memory, not in the database.** They're stored hashed in a Guava cache with expire-after-write, with a resend cooldown and a wrong-attempt limit.
-- **`PhoneNumber` is a value object.** It accepts `98765 43210`, `+91-9876543210`, `09876543210`, always stores `+919876543210`, and masks itself in logs.
+- **`PhoneNumber` and `EmailAddress` are value objects.** The phone accepts `98765 43210`, `+91-9876543210` or `09876543210` and always stores `+919876543210`. Email is trimmed and lower-cased. Both mask themselves in logs.
 - **Time is injected.** All services use a `Clock` (IST), which keeps deadline and expiry logic testable.
 - **Config is typed.** Settings are validated `@ConfigurationProperties` records, and the app refuses to start without a proper `JWT_SECRET`.
 
@@ -76,7 +78,7 @@ Decisions worth calling out:
 |---|---|---|---|---|
 | Group | group id | 10 min | 5 000 | That group changes (join, leave, close, expiry) |
 | Browse results | filters + page + size | 30 s | 500 | Any group changes |
-| OTP codes | phone number | 5 min | 100 000 | Code used, too many attempts, or new code sent |
+| OTP codes | phone number or email | 5 min | 100 000 | Code used, too many attempts, or new code sent |
 
 Chat messages, memberships and the profile are never cached.
 
@@ -90,6 +92,9 @@ Chat messages, memberships and the profile are never cached.
 |---|---|---|
 | POST | `/api/auth/otp/send` | `{ "phone": "9876543210" }` |
 | POST | `/api/auth/otp/verify` | `{ "phone": "9876543210", "otp": "123456", "name": "Anmol" }` |
+| POST | `/api/auth/email/send` | `{ "email": "anmol@gmail.com" }` |
+| POST | `/api/auth/email/verify` | `{ "email": "anmol@gmail.com", "otp": "123456", "name": "Anmol" }` |
+| POST | `/api/auth/google` | `{ "credential": "<Google ID token from the Sign in with Google button>" }` |
 
 `send` returns `{ "expiresInSeconds": 300, "resendAfterSeconds": 60 }`.
 `verify` returns `{ "token", "expiresAt", "newUser", "user" }`. `name` is only used the first time.
@@ -195,6 +200,11 @@ Validation errors also include `fieldErrors`, for example `{ "targetSize": "must
 | `TWILIO_ACCOUNT_SID` | With `twilio` | | Account SID from the Twilio console (starts with `AC`) |
 | `TWILIO_AUTH_TOKEN` | With `twilio` | | Auth token from the Twilio console |
 | `TWILIO_FROM_NUMBER` | With `twilio` | | Your Twilio phone number, e.g. `+15551234567` |
+| `EMAIL_OTP_SENDER` | No | `log` | `log` prints email OTPs to the server log; `smtp` sends real emails |
+| `MAIL_HOST` / `MAIL_PORT` | No | `smtp.gmail.com` / `587` | SMTP server. Use 587, because AWS blocks port 25 |
+| `MAIL_USERNAME` | With `smtp` | | SMTP login, also the "from" address |
+| `MAIL_PASSWORD` | With `smtp` | | SMTP password (for Gmail, an app password) |
+| `GOOGLE_CLIENT_ID` | No | | OAuth client id from Google Cloud Console. Google login is off while it's empty |
 | `SERVER_PORT` | No | `8080` | HTTP port |
 
 Group rules (size 2–50, max 3 open groups per person, deadline within 90 days, finished groups deleted after 30 days) and cache sizes are in `src/main/resources/application.yml`, under `buy-together:`.
@@ -257,6 +267,23 @@ OTP_SENDER=twilio TWILIO_ACCOUNT_SID=AC... TWILIO_AUTH_TOKEN=... TWILIO_FROM_NUM
 
 Twilio errors (wrong token, unverified number) show up in the log as `Twilio could not send OTP`.
 
+### Real email with Gmail
+
+1. Turn on 2-step verification on the Gmail account, then create an **app password** (Google Account → Security → App passwords).
+2. Start the app with:
+
+```bash
+EMAIL_OTP_SENDER=smtp MAIL_USERNAME=you@gmail.com MAIL_PASSWORD=<app password> mvn spring-boot:run
+```
+
+Gmail allows about 500 emails a day. For more, or to send from your own domain, point `MAIL_HOST` at Brevo or SES.
+
+### Google login
+
+1. In Google Cloud Console, open **APIs & Services → Credentials → Create credentials → OAuth client ID**, type **Web application**.
+2. Under **Authorized JavaScript origins**, add the frontend URLs (for example `http://localhost:5173` and the Vercel URL). No redirect URI is needed.
+3. Set `GOOGLE_CLIENT_ID` on the backend and `VITE_GOOGLE_CLIENT_ID` on the frontend to the same client id.
+
 With Docker:
 
 ```bash
@@ -275,14 +302,15 @@ Health check: `GET /actuator/health`
 mvn verify
 ```
 
-The unit tests cover phone parsing, the OTP flow (cooldown, attempts, one-time use, retry after a failed SMS), the Twilio request, JWT issue and verify, cache loading and eviction, the group rules (seat race, duplicate join, full or closed groups, one open group per brand and city, creator rules, deal completion, size and deadline limits) and the cleanup of finished groups. They run without a database. GitHub Actions runs them on every push.
+The unit tests cover phone and email parsing, the OTP flow for phone and email (cooldown, attempts, one-time use, retry after a failed send), the Twilio request, the SMTP email, Google token checks (signature, issuer, audience, expiry, verified email, signed with a local key so no network is needed), JWT issue and verify, cache loading and eviction, the group rules (seat race, duplicate join, full or closed groups, one open group per brand and city, creator rules, deal completion, size and deadline limits) and the cleanup of finished groups. They run without a database. GitHub Actions runs them on every push.
 
 ## Project structure
 
 ```
 src/main/java/com/buytogether
-├── auth            OTP send/verify, login
-│   └── otp         OTP service, code generator, sender strategy
+├── auth            Phone, email and Google login
+│   ├── otp         OTP service, code generator, SMS and email sender strategies
+│   └── google      Google ID token verification
 ├── user            Profile
 ├── group           Groups: commands, queries, atomic repository ops, expiry job
 │   ├── member      Memberships
@@ -291,7 +319,7 @@ src/main/java/com/buytogether
 ├── report          Reports
 ├── security        JWT, filter, Spring Security setup
 ├── config          Clock, CORS
-└── common          Errors, paging, text helpers, PhoneNumber
+└── common          Errors, paging, text helpers, PhoneNumber, EmailAddress
 ```
 
 ## Next up
